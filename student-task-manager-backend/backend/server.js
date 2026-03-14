@@ -11,11 +11,11 @@ const app = express();
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow Postman/curl (no origin), any localhost, or your network IP
       if (
         !origin ||
-        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
-        /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin)
+/^http:\/\/localhost(:\d+)?$/.test(origin) ||
+/^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
+/^http:\/\/43\.205\.183\.60(:\d+)?$/.test(origin)
       ) {
         callback(null, true);
       } else {
