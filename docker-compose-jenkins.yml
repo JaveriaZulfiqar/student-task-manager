@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  mongo-jenkins:
+    image: mongo:6
+    container_name: mongo-jenkins
+    restart: always
+    volumes:
+      - mongo-jenkins-data:/data/db
+      - ./student-task-manager-backend/backend:/app/code
+    networks:
+      - jenkins-network
+
+  backend-jenkins:
+    image: javeriazulfiqarrr/student-task-manager-backend:latest
+    container_name: backend-jenkins
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo-jenkins:27017/student-task-manager
+      - JWT_SECRET=akjsurhbdilojwkaik10283aosnd
+      - PORT=5000
+    depends_on:
+      - mongo-jenkins
+    networks:
+      - jenkins-network
+
+volumes:
+  mongo-jenkins-data:
+
+networks:
+  jenkins-network:
+    driver: bridge
