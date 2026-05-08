@@ -31,4 +31,4 @@ volumes:
 
 networks:
   jenkins-network:
-    driver: bridge
+    driver: bridge 
