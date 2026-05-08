@@ -2,30 +2,41 @@ pipeline {
     agent any
 
     options {
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 15, unit: 'MINUTES')
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo 'Code checked out successfully.'
+                echo 'Application code checked out.'
             }
         }
 
-        stage('Build') {
+        stage('Deploy') {
             steps {
-                echo 'Building application...'
-                // Replace with your actual build command, e.g.:
-                // sh 'npm install && npm run build'
+                sh 'docker compose -f docker-compose.yml up -d'
+                echo 'Application deployed.'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running Selenium tests...'
-                // Replace with your actual test command inside Docker, e.g.:
-                // sh 'docker run --rm -v $(pwd):/app markhobson/maven-chrome mvn test'
+                sh '''
+                    # Clone the test repo
+                    rm -rf test-repo
+                    git clone https://github.com/JaveriaZulfiqar/student-task-manager-tests.git test-repo
+
+                    # Build the test Docker image
+                    docker build -t selenium-tests ./test-repo/selenium-tests
+
+                    # Run the tests
+                    docker run --rm \
+                        --network student-task-manager-v2_app-network \
+                        -v $(pwd)/test-results:/tests/test-results \
+                        selenium-tests \
+                        python3 -m pytest . -v --html=test-results/report.html --self-contained-html
+                '''
             }
         }
     }
@@ -34,9 +45,6 @@ pipeline {
         always {
             script {
                 def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
-
-                // Get the pusher email from the git log — no separate node() needed
-                // because we are already inside the agent's node context
                 def pusherEmail = ''
                 try {
                     pusherEmail = sh(
@@ -47,7 +55,6 @@ pipeline {
                 } catch (e) {
                     echo "Could not retrieve pusher email: ${e.message}"
                 }
-
                 if (pusherEmail?.contains('@')) {
                     emailext(
                         subject: "[Jenkins] ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
@@ -58,13 +65,21 @@ Build Number : ${env.BUILD_NUMBER}
 Triggered by : ${pusherEmail}
 Console URL  : ${env.BUILD_URL}console
                         """,
-                        to: pusherEmail
+                        to: pusherEmail,
+                        attachmentsPattern: 'test-results/report.html'
                     )
                     echo "Email sent to: ${pusherEmail}"
-                } else {
-                    echo 'No valid pusher email found — skipping email notification.'
                 }
             }
+        }
+
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            sh 'docker compose -f docker-compose.yml down || true'
+            echo 'Pipeline failed — deployment stopped.'
         }
     }
 }
