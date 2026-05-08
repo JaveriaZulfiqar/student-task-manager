@@ -55,37 +55,35 @@ pipeline {
         }
 
         stage('Run Selenium Tests') {
-            steps {
-                echo 'Cloning test repository and running Selenium tests...'
-                sh '''
-                    rm -rf selenium-tests-repo
-                    git clone https://github.com/JaveriaZulfiqar/student-task-manager-tests.git selenium-tests-repo
+    steps {
+        echo 'Cloning test repo and running Selenium tests in Docker...'
+        sh '''
+            rm -rf selenium-tests-repo
+            git clone https://github.com/JaveriaZulfiqar/student-task-manager-tests.git selenium-tests-repo
 
-                    pip3 install selenium pytest pytest-html --break-system-packages --quiet 2>/dev/null || true
+            docker build -t selenium-test-image ./selenium-tests-repo
 
-                    if ! command -v google-chrome &> /dev/null; then
-                        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-                        sudo apt-get install -y ./google-chrome-stable_current_amd64.deb 2>/dev/null || true
-                        rm -f google-chrome-stable_current_amd64.deb
-                    fi
-
-                    mkdir -p test-results
-                    BASE_URL=${APP_URL} python3 -m pytest selenium-tests-repo/ \
-                        -v --tb=short \
-                        --html=test-results/report.html \
-                        --self-contained-html \
-                        --junitxml=test-results/results.xml \
-                        2>&1 | tee test-results/test-output.txt || true
-                '''
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'test-results/results.xml'
-                    archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
-                }
-            }
+            mkdir -p test-results
+            docker run --rm \
+                --network host \
+                -v $(pwd)/test-results:/tests/test-results \
+                -e BASE_URL=${APP_URL} \
+                selenium-test-image \
+                python3 -m pytest /tests/ \
+                    -v --tb=short \
+                    --html=/tests/test-results/report.html \
+                    --self-contained-html \
+                    --junitxml=/tests/test-results/results.xml \
+                2>&1 | tee test-results/test-output.txt || true
+        '''
+    }
+    post {
+        always {
+            junit allowEmptyResults: true, testResults: 'test-results/results.xml'
+            archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
         }
-
+    }
+}
         stage('Teardown') {
             steps {
                 echo 'Stopping application containers...'
