@@ -1,4 +1,16 @@
-post {
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        // Add your Build or Test stages here if they are missing
+    }
+
+    post {
         always {
             script {
                 def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
@@ -21,9 +33,9 @@ Hello,
 Your push to Student Task Manager triggered the Jenkins pipeline.
 
 Result:       ${buildStatus}
-Job:          ${env.JOB_NAME}
+Job:           ${env.JOB_NAME}
 Build Number: #${env.BUILD_NUMBER}
-Build URL:    ${env.BUILD_URL}
+Build URL:     ${env.BUILD_URL}
 
 The Selenium test report is attached.
 
@@ -42,3 +54,4 @@ Jenkins CI - COMSATS DevOps Pipeline
             }
         }
     }
+}
