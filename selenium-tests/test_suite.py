@@ -1,17 +1,4 @@
-"""
-Student Task Manager – Selenium Test Suite
-==========================================
-15 automated test cases using headless Chrome.
 
-Requirements:
-  pip install selenium pytest
-
-Run locally:
-  pytest tests/test_student_task_manager.py -v
-
-Environment variable:
-  BASE_URL  – defaults to http://localhost:5000
-"""
 
 import os
 import time
@@ -23,17 +10,12 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
-# ──────────────────────────────────────────────────────────────
-# Configuration
-# ──────────────────────────────────────────────────────────────
+
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 HEADLESS  = os.environ.get("HEADLESS", "true").lower() != "false"
 
 
-# ──────────────────────────────────────────────────────────────
-# Fixtures
-# ──────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
 def driver():
@@ -62,9 +44,7 @@ def navigate(driver, path=""):
     driver.get(BASE_URL + path)
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 1 – Home page loads
-# ══════════════════════════════════════════════════════════════
+
 def test_01_home_page_loads(driver):
     """TC-01: Verify the home/dashboard page loads successfully."""
     navigate(driver)
@@ -74,9 +54,6 @@ def test_01_home_page_loads(driver):
     assert heading is not None, "No <h1> found on home page"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 2 – Navigation bar links are present
-# ══════════════════════════════════════════════════════════════
 def test_02_navbar_links_present(driver):
     """TC-02: Verify all navbar links exist and are clickable."""
     navigate(driver)
@@ -87,9 +64,7 @@ def test_02_navbar_links_present(driver):
         assert expected in link_texts, f"Nav link '{expected}' not found. Found: {link_texts}"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 3 – Students page loads
-# ══════════════════════════════════════════════════════════════
+
 def test_03_students_page_loads(driver):
     """TC-03: Verify /students page loads and displays the students table."""
     navigate(driver, "/students")
@@ -98,9 +73,6 @@ def test_03_students_page_loads(driver):
     assert table is not None, "Students table not found on /students"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 4 – Tasks page loads
-# ══════════════════════════════════════════════════════════════
 def test_04_tasks_page_loads(driver):
     """TC-04: Verify /tasks page loads and displays the tasks table."""
     navigate(driver, "/tasks")
@@ -108,10 +80,6 @@ def test_04_tasks_page_loads(driver):
     table = driver.find_element(By.ID, "tasks-table")
     assert table is not None, "Tasks table not found on /tasks"
 
-
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 5 – Add student page renders form
-# ══════════════════════════════════════════════════════════════
 def test_05_add_student_form_renders(driver):
     """TC-05: Verify /student/add page renders a form with name and email fields."""
     navigate(driver, "/student/add")
@@ -123,9 +91,6 @@ def test_05_add_student_form_renders(driver):
     assert submit_btn.is_displayed(),  "Submit button not visible"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 6 – Add a new student successfully
-# ══════════════════════════════════════════════════════════════
 def test_06_add_student_success(driver):
     """TC-06: Submit valid data and verify the student appears in the list."""
     navigate(driver, "/student/add")
@@ -139,9 +104,6 @@ def test_06_add_student_success(driver):
         "Newly added student 'Selenium Tester' not found in students list"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 7 – Duplicate email is rejected
-# ══════════════════════════════════════════════════════════════
 def test_07_duplicate_email_rejected(driver):
     """TC-07: Submit duplicate email and verify an error flash is shown."""
     navigate(driver, "/student/add")
@@ -154,9 +116,7 @@ def test_07_duplicate_email_rejected(driver):
         "Expected duplicate email error not shown"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 8 – Add task form renders with all fields
-# ══════════════════════════════════════════════════════════════
+
 def test_08_add_task_form_renders(driver):
     """TC-08: Verify /task/add renders all required form fields."""
     navigate(driver, "/task/add")
@@ -167,9 +127,7 @@ def test_08_add_task_form_renders(driver):
     assert driver.find_element(By.ID, "student_id")  is not None
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 9 – Add a new task successfully
-# ══════════════════════════════════════════════════════════════
+
 def test_09_add_task_success(driver):
     """TC-09: Submit a valid task and verify it appears in the task list."""
     navigate(driver, "/task/add")
@@ -190,9 +148,6 @@ def test_09_add_task_success(driver):
         "Newly added task not found in tasks list"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 10 – Priority badge displayed correctly
-# ══════════════════════════════════════════════════════════════
 def test_10_priority_badge_displayed(driver):
     """TC-10: Verify priority badges render on the tasks page."""
     navigate(driver, "/tasks")
@@ -200,9 +155,7 @@ def test_10_priority_badge_displayed(driver):
     assert len(badges) > 0, "No priority badges found on tasks page"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 11 – Status badge displayed correctly
-# ══════════════════════════════════════════════════════════════
+
 def test_11_status_badge_displayed(driver):
     """TC-11: Verify status badges render on the tasks page."""
     navigate(driver, "/tasks")
@@ -211,9 +164,6 @@ def test_11_status_badge_displayed(driver):
     assert len(badges) > 0, "No status badges found on tasks page"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 12 – Student detail page loads
-# ══════════════════════════════════════════════════════════════
 def test_12_student_detail_page(driver):
     """TC-12: Click on first student link and verify detail page loads."""
     navigate(driver, "/students")
@@ -225,9 +175,6 @@ def test_12_student_detail_page(driver):
         f"Expected student detail URL, got: {driver.current_url}"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 13 – Edit task page loads with pre-filled data
-# ══════════════════════════════════════════════════════════════
 def test_13_edit_task_prefilled(driver):
     """TC-13: Verify the edit task page loads with existing task data pre-filled."""
     navigate(driver, "/tasks")
@@ -240,9 +187,6 @@ def test_13_edit_task_prefilled(driver):
         "Title field is empty — task data not pre-filled"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 14 – Search functionality works
-# ══════════════════════════════════════════════════════════════
 def test_14_search_functionality(driver):
     """TC-14: Enter a search term and verify results section appears."""
     navigate(driver, "/search")
@@ -254,9 +198,7 @@ def test_14_search_functionality(driver):
         "Search results section not displayed after search"
 
 
-# ══════════════════════════════════════════════════════════════
-#  TEST CASE 15 – Health endpoint returns 200
-# ══════════════════════════════════════════════════════════════
+
 def test_15_health_endpoint(driver):
     """TC-15: Verify /health endpoint returns a 200 OK response."""
     navigate(driver, "/health")
