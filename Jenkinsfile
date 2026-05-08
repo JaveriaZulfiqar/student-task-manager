@@ -121,10 +121,7 @@ Jenkins CI - COMSATS DevOps Pipeline
                              attachmentsPattern: 'test-results/report.html')
                 } catch (e) { echo "Email to pusher failed: ${e.message}" }
 
-                try {
-                    emailext(subject: subject, body: body, to: 'qasimalik@gmail.com',
-                             attachmentsPattern: 'test-results/report.html')
-                } catch (e) { echo "Email to instructor failed: ${e.message}" }
+                
             }
         }
     }
