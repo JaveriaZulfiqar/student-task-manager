@@ -56,16 +56,21 @@ pipeline {
 
         stage('Run Selenium Tests') {
             steps {
-                echo 'Running Selenium test suite in headless Chrome...'
+                echo 'Cloning test repository and running Selenium tests...'
                 sh '''
+                    rm -rf selenium-tests-repo
+                    git clone https://github.com/JaveriaZulfiqar/student-task-manager-tests.git selenium-tests-repo
+
                     pip3 install selenium pytest pytest-html --break-system-packages --quiet 2>/dev/null || true
+
                     if ! command -v google-chrome &> /dev/null; then
                         wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
                         sudo apt-get install -y ./google-chrome-stable_current_amd64.deb 2>/dev/null || true
                         rm -f google-chrome-stable_current_amd64.deb
                     fi
+
                     mkdir -p test-results
-                    BASE_URL=${APP_URL} python3 -m pytest selenium-tests/ \
+                    BASE_URL=${APP_URL} python3 -m pytest selenium-tests-repo/ \
                         -v --tb=short \
                         --html=test-results/report.html \
                         --self-contained-html \
@@ -97,7 +102,7 @@ pipeline {
                 try {
                     pusherEmail = sh(script: "git log -1 --format='%ae'", returnStdout: true).trim()
                 } catch (e) {
-                    pusherEmail = 'javeriazulfiqar@gmail.com'
+                    pusherEmail = 'javeriazulfiqar45@gmail.com'
                 }
                 def subject = "[Jenkins] ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
                 def body = """
@@ -120,8 +125,6 @@ Jenkins CI - COMSATS DevOps Pipeline
                     emailext(subject: subject, body: body, to: pusherEmail,
                              attachmentsPattern: 'test-results/report.html')
                 } catch (e) { echo "Email to pusher failed: ${e.message}" }
-
-                
             }
         }
     }
