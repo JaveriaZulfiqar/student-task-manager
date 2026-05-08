@@ -18,7 +18,6 @@ import time
 import pytest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -27,17 +26,16 @@ from selenium.webdriver.support import expected_conditions as EC
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 HEADLESS = os.environ.get("HEADLESS", "true").lower() != "false"
 
-# Test credentials
 TEST_USER = {
     "name": "Selenium Test User",
-    "email": f"selenium_test_{int(time.time())}@test.com",
-    "password": "TestPassword123"
+    "email": f"selenium_{int(time.time())}@test.com",
+    "password": "TestPassword123",
 }
 
 
 @pytest.fixture(scope="module")
 def driver():
-    """Set up headless Chrome WebDriver for the entire test module."""
+    """Headless Chrome WebDriver shared across all tests."""
     options = Options()
     if HEADLESS:
         options.add_argument("--headless")
@@ -45,7 +43,6 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1280,800")
-
     drv = webdriver.Chrome(options=options)
     drv.implicitly_wait(5)
     yield drv
@@ -53,223 +50,201 @@ def driver():
 
 
 def wait_for(driver, by, value, timeout=10):
-    """Wait for element to be present."""
     return WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((by, value))
     )
 
 
 def navigate(driver, path=""):
-    """Navigate to a specific path."""
     driver.get(BASE_URL + path)
 
 
-def login(driver, email, password):
-    """Helper function to log in a user."""
+def login(driver):
     navigate(driver, "/login")
-    wait_for(driver, By.CSS_SELECTOR, "input[type='email']")
-    driver.find_element(By.CSS_SELECTOR, "input[type='email']").send_keys(email)
-    driver.find_element(By.CSS_SELECTOR, "input[type='password']").send_keys(password)
+    wait_for(driver, By.ID, "email")
+    driver.find_element(By.ID, "email").clear()
+    driver.find_element(By.ID, "email").send_keys(TEST_USER["email"])
+    driver.find_element(By.ID, "password").clear()
+    driver.find_element(By.ID, "password").send_keys(TEST_USER["password"])
     driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    time.sleep(2)
+    WebDriverWait(driver, 10).until(EC.url_contains("/dashboard"))
 
 
 # ==================== TEST CASES ====================
 
+
 def test_01_home_redirects_to_login(driver):
-    """TC-01: Verify the home page redirects to login page."""
+    """TC-01: Unauthenticated visit to / must redirect to /login."""
     navigate(driver)
     time.sleep(1)
     assert "/login" in driver.current_url, \
         f"Expected redirect to /login, got: {driver.current_url}"
 
 
-def test_02_page_title_correct(driver):
-    """TC-02: Verify the page title is 'Student Task Manager'."""
+def test_02_page_title_is_correct(driver):
+    """TC-02: Browser tab title must read 'Student Task Manager'."""
     navigate(driver, "/login")
     assert "Student Task Manager" in driver.title, \
-        f"Expected 'Student Task Manager' in title, got: {driver.title}"
+        f"Unexpected title: {driver.title}"
 
 
-def test_03_login_page_renders(driver):
-    """TC-03: Verify login page renders with email and password fields."""
+def test_03_login_page_has_register_link(driver):
+    """TC-03: Login page must contain a link to /register."""
     navigate(driver, "/login")
-    email_field = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
-    password_field = driver.find_element(By.CSS_SELECTOR, "input[type='password']")
-    submit_btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-    
-    assert email_field.is_displayed(), "Email field not visible"
-    assert password_field.is_displayed(), "Password field not visible"
-    assert submit_btn.is_displayed(), "Submit button not visible"
+    link = driver.find_element(By.CSS_SELECTOR, "a[href='/register']")
+    assert link.is_displayed(), "Register link not visible on login page"
 
 
-def test_04_register_page_renders(driver):
-    """TC-04: Verify register page renders with name, email, and password fields."""
+def test_04_register_page_password_mismatch_shows_error(driver):
+    """TC-04: Submitting mismatched passwords on register shows an error message."""
     navigate(driver, "/register")
-    name_field = driver.find_element(By.CSS_SELECTOR, "input[type='text']")
-    email_field = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
-    password_field = driver.find_element(By.CSS_SELECTOR, "input[type='password']")
-    submit_btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-    
-    assert name_field.is_displayed(), "Name field not visible"
-    assert email_field.is_displayed(), "Email field not visible"
-    assert password_field.is_displayed(), "Password field not visible"
-    assert submit_btn.is_displayed(), "Submit button not visible"
-
-
-def test_05_user_registration_success(driver):
-    """TC-05: Verify user can successfully register with valid credentials."""
-    navigate(driver, "/register")
-    wait_for(driver, By.CSS_SELECTOR, "input[type='text']")
-    
-    driver.find_element(By.CSS_SELECTOR, "input[type='text']").send_keys(TEST_USER["name"])
-    driver.find_element(By.CSS_SELECTOR, "input[type='email']").send_keys(TEST_USER["email"])
-    driver.find_element(By.CSS_SELECTOR, "input[type='password']").send_keys(TEST_USER["password"])
+    wait_for(driver, By.ID, "name")
+    driver.find_element(By.ID, "name").send_keys("Test User")
+    driver.find_element(By.ID, "email").send_keys("mismatch@test.com")
+    driver.find_element(By.ID, "password").send_keys("Password123")
+    driver.find_element(By.ID, "confirm").send_keys("WrongPassword")
     driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    
-    time.sleep(2)
-    assert "/dashboard" in driver.current_url or "/login" in driver.current_url, \
-        "Registration did not redirect to dashboard or login"
+    time.sleep(1)
+    assert "passwords do not match" in driver.page_source.lower(), \
+        "Password mismatch error not displayed"
 
 
-def test_06_user_login_success(driver):
-    """TC-06: Verify user can successfully log in with valid credentials."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
+def test_05_register_new_user_redirects_to_dashboard(driver):
+    """TC-05: Registering with valid unique credentials redirects to /dashboard."""
+    navigate(driver, "/register")
+    wait_for(driver, By.ID, "name")
+    driver.find_element(By.ID, "name").send_keys(TEST_USER["name"])
+    driver.find_element(By.ID, "email").send_keys(TEST_USER["email"])
+    driver.find_element(By.ID, "password").send_keys(TEST_USER["password"])
+    driver.find_element(By.ID, "confirm").send_keys(TEST_USER["password"])
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    WebDriverWait(driver, 10).until(EC.url_contains("/dashboard"))
     assert "/dashboard" in driver.current_url, \
-        f"Expected redirect to /dashboard after login, got: {driver.current_url}"
+        f"Expected /dashboard after registration, got: {driver.current_url}"
 
 
-def test_07_dashboard_displays_stats(driver):
-    """TC-07: Verify dashboard displays task statistics cards."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
+def test_06_dashboard_shows_three_stat_cards(driver):
+    """TC-06: Dashboard must display Total Tasks, Completed, and Pending stat cards."""
     navigate(driver, "/dashboard")
-    
-    page_source = driver.page_source.lower()
-    assert "total tasks" in page_source or "completed" in page_source or "pending" in page_source, \
-        "Dashboard statistics not displayed"
+    source = driver.page_source.lower()
+    assert "total tasks" in source, "Total Tasks card missing"
+    assert "completed" in source, "Completed card missing"
+    assert "pending" in source, "Pending card missing"
 
 
-def test_08_dashboard_displays_welcome_message(driver):
-    """TC-08: Verify dashboard displays welcome message with user name."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
+def test_07_dashboard_welcome_contains_user_name(driver):
+    """TC-07: Dashboard welcome heading must include the registered user's name."""
     navigate(driver, "/dashboard")
-    
-    assert "welcome" in driver.page_source.lower(), \
-        "Welcome message not found on dashboard"
+    wait_for(driver, By.TAG_NAME, "h1")
+    h1 = driver.find_element(By.TAG_NAME, "h1").text
+    assert TEST_USER["name"].split()[0] in h1, \
+        f"User name not found in welcome heading: '{h1}'"
 
 
-def test_09_navigation_to_tasks_page(driver):
-    """TC-09: Verify navigation to My Tasks page works."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks")
-    
-    assert "/tasks" in driver.current_url, \
-        f"Expected /tasks in URL, got: {driver.current_url}"
-    assert "my tasks" in driver.page_source.lower() or "tasks" in driver.page_source.lower(), \
-        "Tasks page content not displayed"
-
-
-def test_10_add_task_page_renders(driver):
-    """TC-10: Verify Add Task page renders with required form fields."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks/add")
-    
-    time.sleep(1)
-    inputs = driver.find_elements(By.CSS_SELECTOR, "input, textarea")
-    assert len(inputs) >= 2, "Add task form does not have required input fields"
-
-
-def test_11_create_task_success(driver):
-    """TC-11: Verify user can successfully create a new task."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks/add")
-    
-    wait_for(driver, By.CSS_SELECTOR, "input")
-    inputs = driver.find_elements(By.CSS_SELECTOR, "input")
-    textareas = driver.find_elements(By.CSS_SELECTOR, "textarea")
-    
-    # Fill title (first input)
-    inputs[0].send_keys("Selenium Test Task")
-    
-    # Fill description (first textarea)
-    if textareas:
-        textareas[0].send_keys("This task was created by Selenium automated test")
-    
-    # Fill due date (look for date input)
-    for inp in inputs:
-        if inp.get_attribute("type") in ["date", "text"]:
-            inp.send_keys("2025-12-31")
-            break
-    
-    # Submit form
-    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    time.sleep(2)
-    
-    assert "/tasks" in driver.current_url, \
-        "Task creation did not redirect to tasks page"
-
-
-def test_12_tasks_list_displays_created_task(driver):
-    """TC-12: Verify created task appears in the tasks list."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks")
-    time.sleep(1)
-    
-    assert "selenium test task" in driver.page_source.lower(), \
-        "Created task not found in tasks list"
-
-
-def test_13_task_status_badge_displayed(driver):
-    """TC-13: Verify task status badges are displayed on tasks page."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks")
-    time.sleep(1)
-    
-    page_source = driver.page_source.lower()
-    assert "pending" in page_source or "completed" in page_source or "done" in page_source, \
-        "Task status badges not displayed"
-
-
-def test_14_edit_task_page_accessible(driver):
-    """TC-14: Verify edit task page is accessible and loads task data."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
-    navigate(driver, "/tasks")
-    time.sleep(1)
-    
-    # Find edit button (look for buttons with "Edit" text or edit icon)
-    buttons = driver.find_elements(By.TAG_NAME, "button")
-    edit_clicked = False
-    
-    for btn in buttons:
-        if "edit" in btn.text.lower():
-            btn.click()
-            edit_clicked = True
-            break
-    
-    if not edit_clicked:
-        # Try finding by SVG or other means
-        links = driver.find_elements(By.CSS_SELECTOR, "button")
-        if links:
-            links[0].click()
-    
-    time.sleep(2)
-    assert "/tasks/edit/" in driver.current_url or "/tasks" in driver.current_url, \
-        "Edit task page not accessible"
-
-
-def test_15_logout_functionality(driver):
-    """TC-15: Verify user can successfully log out."""
-    login(driver, TEST_USER["email"], TEST_USER["password"])
+def test_08_logout_clears_session_and_redirects(driver):
+    """TC-08: Clicking Logout must redirect to /login and block access to /dashboard."""
     navigate(driver, "/dashboard")
-    time.sleep(1)
-    
-    # Find and click logout button
+    wait_for(driver, By.TAG_NAME, "button")
     buttons = driver.find_elements(By.TAG_NAME, "button")
     for btn in buttons:
         if "logout" in btn.text.lower():
             btn.click()
             break
-    
+    WebDriverWait(driver, 10).until(EC.url_contains("/login"))
+    # Confirm session is gone — visiting /dashboard should redirect back to /login
+    navigate(driver, "/dashboard")
+    time.sleep(1)
+    assert "/login" in driver.current_url, \
+        "Session not cleared — /dashboard still accessible after logout"
+
+
+def test_09_invalid_login_shows_error(driver):
+    """TC-09: Submitting wrong credentials must display a login error message."""
+    navigate(driver, "/login")
+    wait_for(driver, By.ID, "email")
+    driver.find_element(By.ID, "email").send_keys("wrong@test.com")
+    driver.find_element(By.ID, "password").send_keys("WrongPassword")
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
     time.sleep(2)
     assert "/login" in driver.current_url, \
-        f"Logout did not redirect to login page, got: {driver.current_url}"
+        "Invalid login should stay on /login"
+    assert "login failed" in driver.page_source.lower() or \
+           "invalid" in driver.page_source.lower() or \
+           "error" in driver.page_source.lower(), \
+        "No error message shown for invalid credentials"
+
+
+def test_10_add_task_form_has_correct_fields(driver):
+    """TC-10: Add Task form must render title, description, dueDate, and file fields."""
+    login(driver)
+    navigate(driver, "/tasks/add")
+    wait_for(driver, By.ID, "title")
+    assert driver.find_element(By.ID, "title").is_displayed(),       "Title field missing"
+    assert driver.find_element(By.ID, "description").is_displayed(), "Description field missing"
+    assert driver.find_element(By.ID, "dueDate").is_displayed(),     "Due date field missing"
+    assert driver.find_element(By.ID, "file") is not None,           "File input missing"
+
+
+def test_11_create_task_redirects_to_tasks_list(driver):
+    """TC-11: Submitting a valid new task must redirect to /tasks."""
+    navigate(driver, "/tasks/add")
+    wait_for(driver, By.ID, "title")
+    driver.find_element(By.ID, "title").send_keys("Selenium Test Task")
+    driver.find_element(By.ID, "description").send_keys("Created by Selenium")
+    driver.find_element(By.ID, "dueDate").send_keys("2025-12-31")
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    WebDriverWait(driver, 10).until(EC.url_contains("/tasks"))
+    assert "/tasks" in driver.current_url, \
+        "Task creation did not redirect to /tasks"
+
+
+def test_12_created_task_appears_in_task_list(driver):
+    """TC-12: The newly created task title must be visible in the /tasks card grid."""
+    navigate(driver, "/tasks")
+    time.sleep(1)
+    assert "Selenium Test Task" in driver.page_source, \
+        "Created task not found in task list"
+
+
+def test_13_task_card_shows_pending_status_and_due_date(driver):
+    """TC-13: Task cards must display a status badge and a due date."""
+    navigate(driver, "/tasks")
+    time.sleep(1)
+    source = driver.page_source.lower()
+    assert "pending" in source or "done" in source, \
+        "No status badge found on task cards"
+    assert "due:" in source, \
+        "Due date label not found on task cards"
+
+
+def test_14_edit_task_form_is_prefilled(driver):
+    """TC-14: Opening Edit Task must pre-fill the title field with existing task data."""
+    navigate(driver, "/tasks")
+    time.sleep(1)
+    buttons = driver.find_elements(By.TAG_NAME, "button")
+    for btn in buttons:
+        if "edit" in btn.text.lower():
+            btn.click()
+            break
+    WebDriverWait(driver, 10).until(EC.url_contains("/tasks/edit/"))
+    wait_for(driver, By.ID, "title")
+    title_value = driver.find_element(By.ID, "title").get_attribute("value")
+    assert title_value != "", \
+        "Title field is empty — task data not pre-filled on edit page"
+
+
+def test_15_delete_task_removes_it_from_list(driver):
+    """TC-15: Clicking the delete button on a task must remove it from the task list."""
+    navigate(driver, "/tasks")
+    time.sleep(1)
+    source_before = driver.page_source
+    # Find the delete button (Trash2 icon button — no text, last button in each card)
+    delete_buttons = driver.find_elements(
+        By.CSS_SELECTOR, "button.text-destructive, button[class*='destructive']"
+    )
+    assert len(delete_buttons) > 0, "No delete buttons found on tasks page"
+    delete_buttons[0].click()
+    time.sleep(2)
+    source_after = driver.page_source
+    assert source_after != source_before, \
+        "Page source unchanged after delete — task may not have been removed"
