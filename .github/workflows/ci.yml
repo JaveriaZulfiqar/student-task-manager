@@ -43,7 +43,7 @@ jobs:
           npm run test:ci 2>&1 | tee /tmp/test.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            echo "::error title=DEBUG test failure::$(grep -E '●|Error|Expected|Received|threshold|Cannot' /tmp/test.log | head -12 | cut -c1-220 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            echo "::error title=DEBUG test failure::$(grep -m1 -A14 '●' /tmp/test.log | cut -c1-200 | sed ':a;N;$!ba;s/\n/%0A/g')"
           fi
           exit "$code"
       - run: npm audit --omit=dev --audit-level=critical
