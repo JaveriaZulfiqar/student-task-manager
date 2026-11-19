@@ -74,12 +74,9 @@ jobs:
       - name: Build image
         run: docker build -t student-task-manager:ci .
       - name: Scan image (fail on fixable critical CVEs)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: student-task-manager:ci
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 \
+            image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress student-task-manager:ci
       - name: End-to-end tests
         env:
           JWT_SECRET: ci-only-secret
