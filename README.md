@@ -128,5 +128,8 @@ capabilities dropped). The secret is intentionally not stored in git.
 - Passwords are hashed with bcrypt; login errors do not reveal whether an email exists; request bodies are validated so
   object-shaped payloads (`{"$ne": null}`) are rejected.
 - Rate limiting on `/api/auth`, `helmet` headers, JSON body limit, non-root container, image scanning in CI.
+- Dependencies are audited in CI (`npm audit`, fails on critical). `mongoose` is kept on a patched release, with the
+  MongoDB driver pinned to 7.1.0 (`overrides` in `backend/package.json`) because driver 7.7+ failed the connection
+  handshake against MongoDB 7 in CI; unpin when a fixed driver ships.
 - Not done yet: a Content-Security-Policy (disabled in `backend/app.js`), HTTPS termination (put a reverse proxy or the
   Kubernetes Ingress with TLS in front), and secret management beyond env vars / Kubernetes Secrets.
