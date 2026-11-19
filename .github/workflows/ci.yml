@@ -75,8 +75,14 @@ jobs:
         run: docker build -t student-task-manager:ci .
       - name: Scan image (fail on fixable critical CVEs)
         run: |
+          set +e
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 \
-            image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress student-task-manager:ci
+            image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress student-task-manager:ci 2>&1 | tee /tmp/trivy.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=DEBUG trivy::$(tail -40 /tmp/trivy.log | cut -c1-200 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
+          exit "$code"
       - name: End-to-end tests
         env:
           JWT_SECRET: ci-only-secret
