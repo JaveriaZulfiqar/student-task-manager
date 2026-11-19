@@ -1,33 +1,37 @@
-version: "3.8"
+# Run the whole app:  cp .env.example .env  (set JWT_SECRET)  &&  docker compose up -d --build
+name: student-task-manager
 
 services:
   mongo:
-    image: mongo:6
-    container_name: mongo
-    restart: always
+    image: mongo:7
+    restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-    networks:
-      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
 
-  backend:
-    image: javeriazulfiqarrr/student-task-manager-backend:latest
-    container_name: backend
-    restart: always
+  app:
+    build: .
+    image: ${IMAGE_NAME:-student-task-manager}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "${APP_PORT:-5000}:5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/student-task-manager
-      - JWT_SECRET=akjsurhbdilojwkaik10283aosnd
-      - PORT=5000
+      MONGO_URI: mongodb://mongo:27017/student-task-manager
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - copy .env.example to .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-100}
     depends_on:
-      - mongo
-    networks:
-      - app-network
+      mongo:
+        condition: service_healthy
+    networks: [app-network]
 
 volumes:
   mongo-data:
 
 networks:
   app-network:
-    driver: bridge

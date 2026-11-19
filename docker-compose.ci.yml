@@ -1,0 +1,24 @@
+# Used by Jenkins (and runnable locally): tests run inside containers, no local Node needed.
+#   docker compose -f docker-compose.ci.yml run --rm --build backend-tests
+#   docker compose -f docker-compose.ci.yml run --rm --build frontend-tests
+name: stm-ci
+
+services:
+  mongo-test:
+    image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend-tests:
+    build: { context: ., target: backend-test }
+    environment:
+      TEST_MONGO_URI: mongodb://mongo-test:27017/stm-test
+      JWT_SECRET: ci-only-secret
+    depends_on:
+      mongo-test: { condition: service_healthy }
+
+  frontend-tests:
+    build: { context: ., target: frontend-test }

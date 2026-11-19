@@ -1,0 +1,27 @@
+# End-to-end tests (Selenium + Chromium) against the real stack:
+#   JWT_SECRET=anything docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e
+services:
+  selenium:
+    image: selenium/standalone-chromium:4.27.0
+    shm_size: 2gb
+    healthcheck:
+      test: ["CMD", "/opt/bin/check-grid.sh", "--host", "0.0.0.0", "--port", "4444"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [app-network]
+
+  e2e:
+    build: ./e2e
+    environment:
+      BASE_URL: http://app:5000
+      SELENIUM_URL: http://selenium:4444
+      HEADLESS: "true"
+    volumes:
+      - ./test-results:/tests/test-results
+    depends_on:
+      app:
+        condition: service_healthy
+      selenium:
+        condition: service_healthy
+    networks: [app-network]
