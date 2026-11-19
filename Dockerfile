@@ -38,6 +38,10 @@ WORKDIR /app
 COPY --from=backend-deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node backend/ .
 COPY --from=frontend-build --chown=node:node /frontend/dist ./dist
+# The app never needs npm/yarn at runtime. Removing them drops their bundled dependencies
+# (Trivy flagged a critical CVE in npm's bundled `tar`) and shrinks the attack surface.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 USER node
 EXPOSE 5000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
